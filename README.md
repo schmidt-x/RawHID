@@ -133,7 +133,7 @@ To simply send data to a device, call `.Write(...)` method:
   device.Write(output, &err)
   if err {
     if err is DeviceNotConnectedError {
-      ; Device got disconnected.
+      ; Device got disconnected
     } else {
       MsgBox("Failed to write: " err.Message)
     }
@@ -185,7 +185,7 @@ To read data from a device, use `.Read(...)` method:
   device.Open(&err, HID_READ)
   if err {
     if err is DeviceNotConnectedError {
-      ; ...
+      ; Device got disconnected
     } else {
       MsgBox("Failed to open the device: " err.Message)
     }
@@ -200,30 +200,40 @@ To read data from a device, use `.Read(...)` method:
       if err {
         if err is TimeoutError { ; true if it's timed out
           continue
-        }
-        
-        if err is DeviceNotConnectedError {
-          ; Try to re-open the device and continue reading, or just return.
-          Sleep(5000)
-  
-          device.Open(&err, HID_READ)
-          if err {
-            MsgBox("Failed to re-open the device: " err.Message)
-            return
-          } else { ; Continue reading
+        } else if err is DeviceNotConnectedError {
+          ; Try to reconnect to the device and continue reading, or just return
+          if TryReconnect(device, 2000, 10, HID_READ) {
             continue
+          } else {
+            MsgBox("Failed to reconnect")
           }
+        } else {
+          MsgBox("Failed to read: " err.Message)
         }
+        return
       }
 
       ; Do something with the data
 
       MsgBox(Format("First 3 bytes: [{}, {}, {}].", input[1], input[2], input[3]))
-  
     }
-  } finally {
-    device.Close()
+  } finally device.Close()
+}
+
+; your reconnection helper function
+TryReconnect(device, timeout, times, access := HID_READ | HID_WRITE) {
+  isReconnected := false
+  loop times {
+    Sleep(timeout)
+    device.Open(&err, access)
+    if err {
+      continue
+    } else {
+      isReconnected := true
+      break
+    }
   }
+  return isReconnected
 }
 ```
 
@@ -280,10 +290,7 @@ DllCall("kernel32\QueryPerformanceFrequency", "Int64*", &Frequency:=0)
       MsgBox("Failed to read: " err.Message)
       return
     }
-		
-  } finally {
-    device.Close()
-  }
+  } finally device.Close()
 	
   DllCall("kernel32\QueryPerformanceCounter", "Int64*", &endingTime:=0)
 	
