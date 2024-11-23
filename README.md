@@ -39,7 +39,7 @@ Then, include `HidDevices` and `HidDevice` files to your main script:
 
 To find your device, call `HidDevices.Find(...)`. 
 
-This method returns `HidDeviceInfo` object, that contains the device specific information:
+This function returns `HidDeviceInfo` object, that contains the device specific information:
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -128,6 +128,7 @@ To simply send data to a device, call `.Write(...)` method:
 ^i:: {
   device := HidDevice(DeviceInfo)
 	
+  ; output.Length must not exceed device.OutputBufferSize
   output := [1, 2, 3, 4, 5]
 	
   device.Write(output, &err)
@@ -148,6 +149,7 @@ Raw version:
 ^i:: {
   device := HidDevice(DeviceInfo)
 
+  ; output.Size must always be equal to device.OutputRawBufferSize
   output := Buffer(device.OutputRawBufferSize, 0)
 
   ; Note that the first byte is Report ID and should be set to 0.
@@ -196,6 +198,7 @@ To read data from a device, use `.Read(...)` method:
     timeout := 1000 ; ms
 
     loop {
+      ; if succeeded, input.Length always equals to device.InputBufferSize
       input := device.Read(timeout, &err)
       if err {
         if err is TimeoutError { ; true if it's timed out
@@ -243,6 +246,7 @@ In its Raw version, the body of a loop would look like the following:
 ; ...
 
 loop {
+  ; if succeeded, input.Size always equals to device.InputRawBufferSize
   input := device.ReadRaw(timeout, &err)
   if err {
     ; ...
