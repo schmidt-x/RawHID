@@ -10,7 +10,7 @@ It's been written to use with the devices that natively support handling raw inp
 
 As an example, you can take a look at the communication between the host (my PC) and the device (my keyboard):
 - [PC](https://github.com/schmidt-x/Ahk_Lib/tree/main/Keyboards/I44.ahk)
-- Keyboard: [keymap.c](https://github.com/schmidt-x/qmk_firmware/blob/schmidt-x/keyboards/ergohaven/imperial44/keymaps/schmidt-x/keymap.c#L344) and [hid.c](https://github.com/schmidt-x/qmk_firmware/blob/schmidt-x/users/schmidt-x/hid.c)
+- Keyboard: [keymap.c](https://github.com/schmidt-x/qmk_firmware/blob/schmidt-x/keyboards/ergohaven/imperial44/keymaps/schmidt-x/keymap.c#L225) and [hid.c](https://github.com/schmidt-x/qmk_firmware/blob/schmidt-x/users/schmidt-x/hid.c)
 
 
 ## How to use
@@ -39,7 +39,7 @@ Then, include `HidDevices` and `HidDevice` files to your main script:
 
 To find your device, call `HidDevices.Find(...)`. 
 
-This method returns `HidDeviceInfo` object, that contains the device specific information:
+This function returns `HidDeviceInfo` object, that contains the device specific information:
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -128,12 +128,13 @@ To simply send data to a device, call `.Write(...)` method:
 ^i:: {
   device := HidDevice(DeviceInfo)
 	
+  ; output.Length must not exceed device.OutputBufferSize
   output := [1, 2, 3, 4, 5]
 	
   device.Write(output, &err)
   if err {
     if err is DeviceNotConnectedError {
-      ; Device got disconnected.
+      ; Device got disconnected
     } else {
       MsgBox("Failed to write: " err.Message)
     }
@@ -148,6 +149,7 @@ Raw version:
 ^i:: {
   device := HidDevice(DeviceInfo)
 
+  ; output.Size must always be equal to device.OutputRawBufferSize
   output := Buffer(device.OutputRawBufferSize, 0)
 
   ; Note that the first byte is Report ID and should be set to 0.
@@ -185,7 +187,7 @@ To read data from a device, use `.Read(...)` method:
   device.Open(&err, HID_READ)
   if err {
     if err is DeviceNotConnectedError {
-      ; ...
+      ; Device got disconnected
     } else {
       MsgBox("Failed to open the device: " err.Message)
     }
@@ -196,34 +198,45 @@ To read data from a device, use `.Read(...)` method:
     timeout := 1000 ; ms
 
     loop {
+      ; if succeeded, input.Length always equals to device.InputBufferSize
       input := device.Read(timeout, &err)
       if err {
         if err is TimeoutError { ; true if it's timed out
           continue
-        }
-        
-        if err is DeviceNotConnectedError {
-          ; Try to re-open the device and continue reading, or just return.
-          Sleep(5000)
-  
-          device.Open(&err, HID_READ)
-          if err {
-            MsgBox("Failed to re-open the device: " err.Message)
-            return
-          } else { ; Continue reading
+        } else if err is DeviceNotConnectedError {
+          ; Try to reconnect to the device and continue reading, or just return
+          if TryReconnect(device, 2000, 10, HID_READ) {
             continue
+          } else {
+            MsgBox("Failed to reconnect")
           }
+        } else {
+          MsgBox("Failed to read: " err.Message)
         }
+        return
       }
 
       ; Do something with the data
 
       MsgBox(Format("First 3 bytes: [{}, {}, {}].", input[1], input[2], input[3]))
-  
     }
-  } finally {
-    device.Close()
+  } finally device.Close()
+}
+
+; your reconnection helper function
+TryReconnect(device, timeout, times, access := HID_READ | HID_WRITE) {
+  isReconnected := false
+  loop times {
+    Sleep(timeout)
+    device.Open(&err, access)
+    if err {
+      continue
+    } else {
+      isReconnected := true
+      break
+    }
   }
+  return isReconnected
 }
 ```
 
@@ -233,6 +246,7 @@ In its Raw version, the body of a loop would look like the following:
 ; ...
 
 loop {
+  ; if succeeded, input.Size always equals to device.InputRawBufferSize
   input := device.ReadRaw(timeout, &err)
   if err {
     ; ...
@@ -280,10 +294,7 @@ DllCall("kernel32\QueryPerformanceFrequency", "Int64*", &Frequency:=0)
       MsgBox("Failed to read: " err.Message)
       return
     }
-		
-  } finally {
-    device.Close()
-  }
+  } finally device.Close()
 	
   DllCall("kernel32\QueryPerformanceCounter", "Int64*", &endingTime:=0)
 	
