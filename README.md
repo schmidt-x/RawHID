@@ -13,9 +13,9 @@ As an example, you can take a look at the communication between the host (my PC)
 - Keyboard: [keymap.c](https://github.com/schmidt-x/qmk_firmware/blob/schmidt-x/keyboards/ergohaven/imperial44/keymaps/schmidt-x/keymap.c#L225) and [hid.c](https://github.com/schmidt-x/qmk_firmware/blob/schmidt-x/users/schmidt-x/hid.c)
 
 
-## How to use
+## Usage
 
-### Including Lib
+### Including library
 
 First of all, clone this repository into your [AHK Script Library Folders](https://www.autohotkey.com/docs/v2/Scripts.htm#lib).
 
@@ -26,20 +26,13 @@ Then, include `HidDevices` and `HidDevice` files to your main script:
 
 #Include <RawHID\HidDevices>
 #Include <RawHID\HidDevice>
-
-
-; your hotkeys
-
-^i:: {
-  ; ...
-}
 ```
 
 ### Finding Device
 
 To find your device, call `HidDevices.Find(...)`. 
 
-This function returns `HidDeviceInfo` object, that contains the device specific information:
+This function returns a `HidDeviceInfo` object, that contains the device-specific information:
 
 ```ahk
 #Requires AutoHotkey v2.0
@@ -133,12 +126,7 @@ To simply send data to a device, call `.Write(...)` method:
 	
   device.Write(output, &err)
   if err {
-    if err is DeviceNotConnectedError {
-      ; Device got disconnected
-    } else {
-      MsgBox("Failed to write: " err.Message)
-    }
-    return
+    MsgBox(err is DeviceNotConnectedError ? "Device got disconnected" : "Failed to write: " err.Message)
   }
 }
 ```
@@ -186,11 +174,7 @@ To read data from a device, use `.Read(...)` method:
   ; Since, in this case, we're going to only read from the device, it's opened with the reading rights.
   device.Open(&err, HID_READ)
   if err {
-    if err is DeviceNotConnectedError {
-      ; Device got disconnected
-    } else {
-      MsgBox("Failed to open the device: " err.Message)
-    }
+    MsgBox(err is DeviceNotConnectedError ? "Device is not connected" : "Failed to open: " err.Message)
     return
   }
 	

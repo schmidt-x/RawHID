@@ -196,10 +196,10 @@ class HidDevices {
 						"Ptr",  0,
 						"Ptr",  0)
 					
-					if not succeeded {
-						; TODO: to log
-					} else {
+					if succeeded {
 						devicePathList.Push(devInterfaceDetailData.GetDevicePath())
+					} else {
+						; TODO: to log
 					}
 				}
 				
